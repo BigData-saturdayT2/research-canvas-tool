@@ -1,0 +1,3 @@
+[console_scripts]
+demo=copilotkit.demos.research_canvas.demo:main
+

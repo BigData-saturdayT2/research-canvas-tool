@@ -103,30 +103,30 @@ def call_nvidia_llama_api(prompt: str) -> dict:
         logging.error(f"Failed to call NVIDIA API: {str(e)}")
         return {"error": str(e)}
 
-def rag_search(query: str) -> dict:
+def rag_search(input: str) -> dict:
     """
-    Retrieves relevant documents from Pinecone based on the query and generates a response using NVIDIA Llama3-8B-Instruct API.
+    Retrieves relevant documents from Pinecone based on the input and generates a response using NVIDIA Llama3-8B-Instruct API.
 
     Args:
-        query (str): The user's query.
+        input (str): The user's input.
 
     Returns:
         dict: The generated response from Llama3-8B-Instruct.
     """
-    logging.info(f"Performing RAG search for query: {query}")
+    logging.info(f"Performing RAG search for input: {input}")
 
-    # Retrieve relevant documents from Pinecone based on query
-    relevant_docs = retriever.get_relevant_documents(query)
+    # Retrieve relevant documents from Pinecone based on input
+    relevant_docs = retriever.get_relevant_documents(input)
     
     if relevant_docs:
         logging.info(f"Retrieved {len(relevant_docs)} relevant documents from Pinecone.")
     else:
-        logging.warning("No relevant documents found for the query.")
+        logging.warning("No relevant documents found for the input.")
 
-    # Prepare prompt by combining query and retrieved documents' content
-    # For simplicity, we are only using the query in this example.
+    # Prepare prompt by combining input and retrieved documents' content
+    # For simplicity, we are only using the input in this example.
     
-    prompt = f"Query: {query}"
+    prompt = f"input: {input}"
     
     # Call NVIDIA Llama3-8B-Instruct API to generate a response based on the combined prompt
     llama_response = call_nvidia_llama_api(prompt)

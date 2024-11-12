@@ -12,7 +12,7 @@ langgraph = "^0.2.45"
 copilotkit = "^0.1.27"
 python-dotenv = "^1.0.1"
 requests = "^2.32.3"
-fastapi = "^0.115.4"
+fastapi = {extras = ["all"], version = "^0.115.4"}
 uvicorn = "^0.32.0"
 xmltodict = "^0.14.2"
 arxiv = "^2.1.3"

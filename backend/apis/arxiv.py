@@ -5,15 +5,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-ARXIV_API_URL = "http://export.arxiv.org/api/query"
+ARXIV_API_URL = "http://export.arxiv.org/api/input"
 
 @tool("search_arxiv")
-def search_arxiv(query: str) -> dict:
+def search_arxiv(input: str) -> dict:
     """
-    Searches for research papers on Arxiv based on the provided query.
+    Searches for research papers on Arxiv based on the provided input.
     
     Args:
-        query (str): The search term or topic to look up.
+        input (str): The search term or topic to look up.
     
     Returns:
         dict: A dictionary containing either the search results or an error message.
@@ -21,7 +21,7 @@ def search_arxiv(query: str) -> dict:
     try:
         # Configure the search parameters
         params = {
-            "search_query": f"all:{query}",
+            "search_input": f"all:{input}",
             "start": 0,
             "max_results": 5,
             "sortBy": "relevance",
@@ -69,7 +69,7 @@ def search_arxiv(query: str) -> dict:
             results.append(paper)
             
         if not results:
-            return {"message": "No papers found matching your query."}
+            return {"message": "No papers found matching your input."}
             
         return {"results": results}
 

@@ -28,7 +28,7 @@ def ExtractTopResources(resources: List[ResourceInput]):
 # Setup the Tavily client (API key for web searches)
 tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
-async def search_node(state: dict, config):
+async def search_node(input: str, state: dict, config: dict) -> dict:
     """
     The search node handles internet searches based on user queries.
     It gathers resources and updates the state with the findings.
@@ -44,30 +44,30 @@ async def search_node(state: dict, config):
     ai_message = state["messages"][-1]
     logger.debug(f"AI Message: {ai_message}")  # Log the full message to inspect the structure
 
-    # Assuming query is in the 'content' key of the message
-    user_query = ai_message.get("content", "")
-    if not user_query:
-        logger.error("No query found in the message content.")
-        return {"error": "No query found in the message content"}
+    # Assuming input is in the 'content' key of the message
+    user_input = ai_message.get("content", "")
+    if not user_input:
+        logger.error("No input found in the message content.")
+        return {"error": "No input found in the message content"}
 
-    logger.info(f"Received query: {user_query}")
+    logger.info(f"Received input: {user_input}")
 
     # Initialize search logs and resources in state if not present
     state["resources"] = state.get("resources", [])
     state["logs"] = state.get("logs", [])
 
-    # Perform search for the query using Tavily
-    logger.info(f"Performing search for query: {user_query}")
+    # Perform search for the input using Tavily
+    logger.info(f"Performing search for input: {user_input}")
     try:
-        search_response = tavily_client.search(user_query)
+        search_response = tavily_client.search(user_input)
         state["resources"].append(search_response)
-        logger.info(f"Search results for query '{user_query}' fetched successfully.")
+        logger.info(f"Search results for input '{user_input}' fetched successfully.")
     except Exception as e:
-        logger.error(f"Error performing search for query '{user_query}': {str(e)}")
-        state["logs"].append({"message": f"Error performing search for '{user_query}'", "done": True})
+        logger.error(f"Error performing search for input '{user_input}': {str(e)}")
+        state["logs"].append({"message": f"Error performing search for '{user_input}'", "done": True})
 
     # Add a log entry after fetching search results
-    state["logs"].append({"message": f"Search results for '{user_query}' fetched.", "done": True})
+    state["logs"].append({"message": f"Search results for '{user_input}' fetched.", "done": True})
 
     # Update the state with search results
     logger.debug("Updating state with search results")

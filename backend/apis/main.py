@@ -1,68 +1,86 @@
 from fastapi import FastAPI
 from copilotkit import CopilotKitSDK, LangGraphAgent
 from langgraph.graph import StateGraph, START, END, MessagesState
-from langgraph.checkpoint.memory import MemorySaver
-from apis.router import tool_node
+from apis.rag import rag_search
+from apis.arxiv import search_arxiv
+from apis.router import tool_node  # Updated router with both Arxiv and RAG tools
+from apis.web import search_node  # Import the web search node
 import logging
-from apis.arxiv import search_arxiv  # Import the search_arxiv function
-from fastapi.middleware.cors import CORSMiddleware
 
-# Initialize FastAPI app
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Define the state using MessagesState
+# Define state graph using MessagesState
 state_graph = StateGraph(MessagesState)
 
-# Define a simple function for model invocation (placeholder)
-def call_model(state: MessagesState):
-    user_query = state["messages"][-1].content  # Extract the user's query
-    logger.info(f"Received query: {user_query}")
+# Selector function that decides whether to use Arxiv, RAG, or Web Search based on query content.
+def selector(state: MessagesState) -> str:
+    last_message = state["messages"][-1].content.lower()
     
-    # Generate a response based on the query
-    new_message = {"role": "assistant", "content": f"Received query: {user_query}"}
-    state["messages"].append(new_message)  # Append to the state messages
-    return {"messages": state["messages"]}
+    if "arxiv" in last_message:
+        return "fetch_arxiv"
+    
+    if "rag" in last_message:
+        return "rag_search"
+    
+    if "web search" in last_message:  # Check if the query is for web search
+        return "web_search"
+    
+    return "finalAnswer"
 
-# Define the function that determines whether to continue or end
-def should_continue(state: MessagesState) -> str:
-    last_message = state["messages"][-1]
-    if "search" in last_message.content.lower():
-        return "tools"  # Route to tools if 'search' is in the message
-    return END  # End the process if no search is found
+# Add nodes and edges to state graph based on architecture diagram.
+state_graph.add_node("selector", selector)
+state_graph.add_node("fetch_arxiv", tool_node)  # Run Arxiv search if selected by selector.
+state_graph.add_node("rag_search", tool_node)  # Run RAG search if selected by selector.
+state_graph.add_node("web_search", search_node)  # Run Web Search if selected by selector.
+state_graph.add_node("finalAnswer", lambda state: {"messages": state["messages"]})
 
-# Add nodes to the graph
-state_graph.add_node("agent", call_model)
-state_graph.add_node("tools", tool_node)
+state_graph.add_edge(START, "selector")
+state_graph.add_edge("selector", "fetch_arxiv")
+state_graph.add_edge("selector", "rag_search")
+state_graph.add_edge("selector", "web_search")
+state_graph.add_edge("selector", "finalAnswer")
+state_graph.add_edge("fetch_arxiv", "finalAnswer")
+state_graph.add_edge("rag_search", "finalAnswer")
+state_graph.add_edge("web_search", "finalAnswer")
 
-# Define workflow edges
-state_graph.add_edge(START, "agent")
-state_graph.add_conditional_edges("agent", should_continue)
-state_graph.add_edge("tools", "agent")
-
-# Compile the graph into a runnable workflow
+# Compile workflow into runnable graph.
 workflow = state_graph.compile()
 
-# Initialize the CopilotKit SDK with LangGraphAgent
+# Initialize CopilotKit SDK with LangGraphAgent.
 sdk = CopilotKitSDK(
     agents=[LangGraphAgent(
-        name="arxiv_agent",
-        description="An agent that searches for research papers using the Arxiv API.",
-        graph=workflow
+        name="combined_agent",
+        description="An agent that searches for research papers using Arxiv, retrieves documents using RAG, or performs web searches.",
+        graph=workflow,
     )]
 )
+
+@app.post("/rag-search")
+async def rag_search_endpoint(payload: dict[str, str]):
+    """
+    Endpoint to handle RAG search queries.
+    
+    Args:
+        payload (dict): A dictionary containing the user's query.
+
+    Returns:
+        dict: The response from the RAG search process.
+    """
+    query = payload.get("query", "")
+    
+    if not query:
+        return {"error": "No query provided"}
+    
+    try:
+        # Call the rag_search function and return its result
+        response = rag_search(query)
+        return response
+    
+    except Exception as e:
+        return {"error": str(e)}
 
 @app.post("/copilotkit_remote")
 async def handle_copilotkit_remote(payload: dict):
@@ -91,9 +109,36 @@ async def handle_copilotkit_remote(payload: dict):
         logger.error(f"Error invoking Arxiv tool: {str(e)}")
         return {"error": str(e)}
 
+@app.post("/web-search")
+async def web_search_endpoint(payload: dict[str, str]):
+    """
+    Endpoint to handle Web Search queries.
+    
+    Args:
+        payload (dict): A dictionary containing the user's query.
+
+    Returns:
+        dict: The response from the Web Search process.
+    """
+    query = payload.get("query", "")
+    
+    if not query:
+        return {"error": "No query provided"}
+    
+    try:
+        # Call the web search function directly from search_node
+        state = {"messages": [{"content": query}]}  # Minimal state setup with the query
+        config = {}  # Dummy config; replace with actual config if needed
+        response = await search_node(state, config)  # Await if search_node is async
+        return response
+    
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/")
 def read_root():
-    return {"message": "Hello, World from FastAPI!"}
+    return {"message": "Hello from Combined Agent!"}
 
 if __name__ == "__main__":
     import uvicorn

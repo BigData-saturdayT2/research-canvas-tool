@@ -5,9 +5,19 @@ from langgraph.checkpoint.memory import MemorySaver
 from apis.router import tool_node
 import logging
 from apis.arxiv import search_arxiv  # Import the search_arxiv function
+from fastapi.middleware.cors import CORSMiddleware
 
 # Initialize FastAPI app
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

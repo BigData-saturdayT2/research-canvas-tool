@@ -1,29 +1,38 @@
+// app/page.tsx
+"use client";
+
 import { useState } from "react";
 
-export default function Home() {
-  const [query, setQuery] = useState(""); // State for capturing query input
-  const [results, setResults] = useState<any>(null); // State for storing results
+interface ArxivResult {
+  title: string;
+  authors: string[];
+  summary: string;
+}
 
-  // Function to handle the form submission
+export default function Home() {
+  const [query, setQuery] = useState<string>("");
+  const [results, setResults] = useState<ArxivResult[] | null>(null);
+
   const searchArxiv = async () => {
-    const maxResults = 5; // Set the number of results you want
+    const maxResults = 5;
 
     const requestData = {
-      query: query,
+      messages: [{ content: query }], // Wrap query in messages array
       max_results: maxResults,
     };
 
     try {
+      // page.tsx (or ChatComponent.tsx)
       const response = await fetch("http://localhost:8000/copilotkit_remote", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+            "Content-Type": "application/json",
         },
         body: JSON.stringify(requestData),
       });
 
-      const data = await response.json(); // Assuming the response is JSON
-      setResults(data.results); // Update the state with the results
+      const data = await response.json();
+      setResults(data.results || []);
     } catch (error) {
       console.error("Error:", error);
     }
@@ -32,29 +41,27 @@ export default function Home() {
   return (
     <div>
       <h1>Hello, World from Next.js!</h1>
-      <p>This is a basic Next.js setup located in frontend/copilot/ui/.</p>
-
       <input
         type="text"
-        id="searchInput"
         placeholder="Enter search query"
         value={query}
-        onChange={(e) => setQuery(e.target.value)} // Update query state
+        onChange={(e) => setQuery(e.target.value)}
       />
       <button onClick={searchArxiv}>Search</button>
 
-      <div>
-        {results && (
-          <div>
-            <h2>Results:</h2>
-            <ul>
-              {results.map((result: any, index: number) => (
-                <li key={index}>{result}</li> // Assuming the result is a list
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+      {results && (
+        <div>
+          <h2>Results:</h2>
+          <ul>
+            {results.map((result, index) => (
+              <li key={index}>
+                <strong>{result.title}</strong> - {result.authors.join(", ")}
+                <p>{result.summary}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

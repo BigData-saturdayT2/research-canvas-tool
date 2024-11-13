@@ -1,22 +1,28 @@
 import requests
 import xmltodict
 from langchain_core.tools import tool
+from openai import OpenAI
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+# Load OpenAI API key
+api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key)
 
 ARXIV_API_URL = "http://export.arxiv.org/api/query"
 
 @tool("search_arxiv")
 def search_arxiv(query: str) -> dict:
     """
-    Searches for research papers on Arxiv based on the provided query.
+    Searches for research papers on Arxiv based on the provided query and summarizes the results.
     
     Args:
         query (str): The search term or topic to look up.
     
     Returns:
-        dict: A dictionary containing either the search results or an error message.
+        dict: A dictionary containing either the summarized search results or an error message.
     """
     try:
         # Configure the search parameters
@@ -54,10 +60,14 @@ def search_arxiv(query: str) -> dict:
             
             author_names = [author.get('name', '') for author in authors]
             
+            # Summarize the paper's overview using OpenAI GPT
+            full_summary = entry.get('summary', '').replace('\n', ' ').strip()
+            summarized_text = summarize_text(full_summary)
+
             # Extract other paper details
             paper = {
                 "title": entry.get('title', '').replace('\n', ' ').strip(),
-                "summary": entry.get('summary', '').replace('\n', ' ').strip(),
+                "summary": summarized_text,
                 "authors": author_names,
                 "published": entry.get('published', ''),
                 "link": entry.get('id', ''),
@@ -76,3 +86,24 @@ def search_arxiv(query: str) -> dict:
     except Exception as e:
         logger.error(f"Error in search_arxiv: {str(e)}")
         return {"error": f"An error occurred while searching: {str(e)}"}
+
+def summarize_text(text: str) -> str:
+    """
+    Summarizes the text using OpenAI's GPT API with the preferred method.
+    
+    Args:
+        text (str): The full summary text.
+    
+    Returns:
+        str: A summarized version of the text.
+    """
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": f"Summarize the following text to 40-80 words:\n{text}"}]
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        logger.error(f"Error in summarize_text: {str(e)}")
+        return "Summary not available due to an error."
+

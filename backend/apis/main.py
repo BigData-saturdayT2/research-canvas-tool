@@ -1,5 +1,3 @@
-# main.py
-
 from fastapi import FastAPI
 from copilotkit import CopilotKitSDK, LangGraphAgent
 from langgraph.graph import StateGraph, START, END, MessagesState
@@ -7,8 +5,17 @@ from apis.rag import rag_search
 from apis.arxiv import search_arxiv
 from apis.router import tool_node  # Updated router with both Arxiv and RAG tools
 import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins or specify specific ones
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods or specify methods like ['GET', 'POST']
+    allow_headers=["*"],  # Allow all headers
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,7 +61,7 @@ sdk = CopilotKitSDK(
 )
 
 @app.post("/rag-search")
-async def rag_search_endpoint(payload: dict[str, str]):
+async def rag_search_endpoint(payload: dict):
     """
     Endpoint to handle RAG search queries.
     
@@ -64,17 +71,24 @@ async def rag_search_endpoint(payload: dict[str, str]):
     Returns:
         dict: The response from the RAG search process.
     """
+    logger.info(f"Received payload: {payload}")  # Log the incoming payload
+    
     query = payload.get("query", "")
     
     if not query:
         return {"error": "No query provided"}
     
     try:
-        # Call the rag_search function and return its result
+        # Perform RAG search
         response = rag_search(query)
+        
+        # Log the response from the rag_search function
+        logger.info(f"RAG search response: {response}")
+        
         return response
     
     except Exception as e:
+        logger.error(f"Error invoking RAG search: {str(e)}")
         return {"error": str(e)}
 
 @app.post("/copilotkit_remote")
@@ -82,20 +96,19 @@ async def handle_copilotkit_remote(payload: dict):
     try:
         logger.info(f"Received payload: {payload}")
         
-        # Extract query from the payload
-        user_query = payload.get('messages', [{}])[0].get('content', '')
+        # Extract query from the payload directly
+        user_query = payload.get('query', '')
         logger.info(f"Running agent with payload: {user_query}")
         
-        # Check if query is not empty
+        # Check if query is provided
         if user_query:
             logger.info(f"Searching for papers related to: {user_query}")
             
-            # Use the invoke method as recommended
+            # Use the invoke method to get the search results
             search_results = search_arxiv.invoke(user_query)
             
             logger.info(f"Search results returned: {search_results}")
-            return search_results  # Return the results directly
-        
+            return search_results  # Return the search results
         else:
             logger.error("No query provided in the payload.")
             return {"error": "No query provided"}

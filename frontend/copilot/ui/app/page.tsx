@@ -113,33 +113,40 @@ export default function Home() {
     }
   };
 
-  // Function to update combined data whenever new results are fetched
-  const updateCombinedData = (newResults, source) => {
-    let combinedText = "";
-  
-    // Add a newline before the query
-    combinedText += `\n\n**Query:** ${query}\n\n`;
-  
-    // Format results based on their source
-    newResults.forEach(result => {
-      if (source === 'arxiv') {
-        // Format Arxiv results with markdown specific for them
-        combinedText += `\n### ${result.title}\n\n**Summary:**\n${result.summary}\n\n`;
-        if (result.pdf_url) {
-          combinedText += `[Download PDF](${result.pdf_url})\n\n`;
-        }
-      } else if (source === 'rag') {
-        // Format RAG results with markdown
-        combinedText += `### ${result.title}\n\n${result.summary}\n\n`;
-      } else if (source === 'web') {
-        // Format Web results with markdown
-        combinedText += `### ${result.title}\n\n${result.summary}\n\n`;
+// Function to update combined data whenever new results are fetched
+const updateCombinedData = (newResults, source) => {
+  let combinedText = "";
+
+  // Add a newline before the query
+  combinedText += `<br>**Query:** ${query}<br>`;
+
+  // Format results based on their source
+  newResults.forEach(result => {
+    if (source === 'arxiv') {
+      // Format Arxiv results with markdown specific for them
+      combinedText += `<br>**${result.title}**<br>**Summary:**\n${result.summary}`;
+      if (result.pdf_url) {
+        // combinedText += `<br>[Download PDF](${result.pdf_url})\n\n`;
+        combinedText += `<br><a href="${result.pdf_url}" style="color: blue;">[Download PDF]</a>\n\n`;
       }
-    });
-  
-    // Update combinedData with markdown-formatted content
-    setCombinedData(prev => prev + combinedText);
-  };
+    } else if (source === 'rag') {
+      // Format RAG results with markdown
+      // combinedText += `### ${result.title}<br><br>${result.summary}<br>\n\n`;
+      combinedText += `${result.title}<br><br>${result.summary}<br>\n\n`;
+    } else if (source === 'web') {
+      // Format Web results with markdown
+      combinedText += `${result.title}<br><br>**Response:**<br>${result.summary}<br>`;
+      
+      // If there is a URL or additional metadata, add it
+      if (result.url) {
+        combinedText += `[Read More](${result.url})\n\n`;
+      }
+    }
+  });
+
+  // Update combinedData with markdown-formatted content
+  setCombinedData(prev => prev + combinedText);
+};
   
 
   // Convert the entire combinedData to Markdown format and render HTML

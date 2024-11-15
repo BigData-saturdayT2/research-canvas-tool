@@ -113,44 +113,49 @@ export default function Home() {
     }
   };
 
-// Function to update combined data whenever new results are fetched
-const updateCombinedData = (newResults, source) => {
-  let combinedText = "";
+  // Function to update combined data whenever new results are fetched
+  const updateCombinedData = (newResults, source) => {
+    let combinedText = "";
 
-  // Add a newline before the query
-  combinedText += `<br>**Query:** ${query}<br>`;
+    // Add a newline before the query
+    combinedText += `<br>**Query:** ${query}<br>`;
 
-  // Format results based on their source
-  newResults.forEach(result => {
-    if (source === 'arxiv') {
-      // Format Arxiv results with markdown specific for them
-      combinedText += `<br>**${result.title}**<br>**Summary:**\n${result.summary}`;
-      if (result.pdf_url) {
-        // combinedText += `<br>[Download PDF](${result.pdf_url})\n\n`;
-        combinedText += `<br><a href="${result.pdf_url}" style="color: blue;">[Download PDF]</a>\n\n`;
+    // Format results based on their source
+    newResults.forEach(result => {
+      if (source === 'arxiv') {
+        combinedText += `<br>**${result.title}**<br>**Summary:**\n${result.summary}`;
+        if (result.pdf_url) {
+          combinedText += `<br><a href="${result.pdf_url}" style="color: blue;">[Download PDF]</a>\n\n`;
+        }
+      } else if (source === 'rag') {
+        combinedText += `${result.title}<br><br>${result.summary}<br>\n\n`;
+      } else if (source === 'web') {
+        combinedText += `${result.title}<br><br>**Response:**<br>${result.summary}<br>`;
+        if (result.url) {
+          combinedText += `[Read More](${result.url})\n\n`;
+        }
       }
-    } else if (source === 'rag') {
-      // Format RAG results with markdown
-      // combinedText += `### ${result.title}<br><br>${result.summary}<br>\n\n`;
-      combinedText += `${result.title}<br><br>${result.summary}<br>\n\n`;
-    } else if (source === 'web') {
-      // Format Web results with markdown
-      combinedText += `${result.title}<br><br>**Response:**<br>${result.summary}<br>`;
-      
-      // If there is a URL or additional metadata, add it
-      if (result.url) {
-        combinedText += `[Read More](${result.url})\n\n`;
-      }
-    }
-  });
+    });
 
-  // Update combinedData with markdown-formatted content
-  setCombinedData(prev => prev + combinedText);
-};
-  
+    // Update combinedData with markdown-formatted content
+    setCombinedData(prev => prev + combinedText);
+  };
 
   // Convert the entire combinedData to Markdown format and render HTML
   const markdownContent = marked(combinedData);
+
+  // Function to download combinedData as a .md file
+  const downloadMarkdown = () => {
+    const blob = new Blob([combinedData], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "combined_output.md";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <SearchContext.Provider value={{ results }}>
@@ -175,6 +180,7 @@ const updateCombinedData = (newResults, source) => {
             <button onClick={searchArxiv}>Search Arxiv</button>
             <button onClick={searchRag}>Search RAG</button>
             <button onClick={searchWeb}>Search Web</button>
+            <button onClick={downloadMarkdown}>Download Markdown</button>
           </div>
 
           <div className="main-content">
@@ -204,7 +210,7 @@ const updateCombinedData = (newResults, source) => {
               <p>No results to display.</p>
             )}
 
-            <div className="combined-data-container">
+            <div className="card combined-data-container">
               <h2>Combined Output (Markdown)</h2>
               <div dangerouslySetInnerHTML={{ __html: markdownContent }} />
             </div>
